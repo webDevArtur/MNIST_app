@@ -1,0 +1,56 @@
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #ececec;
+}
+
+.app-container {
+  text-align: center;
+}
+
+.canvas-container {
+  margin-bottom: 20px;
+}
+
+.canvas {
+  border: 1px solid black;
+  background-color: black;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn {
+  padding: 15px 30px;
+  font-size: 18px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-clear {
+  background-color: #ff6347;
+  color: white;
+}
+
+.btn-predict {
+  background-color: #4682b4;
+  color: white;
+}
+
+.prediction {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.disabled {
+  background-color: #afafaf;
+  color: white;
+  cursor: not-allowed;
+}
