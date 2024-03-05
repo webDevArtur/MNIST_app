@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -76,6 +76,35 @@ const DigitRecognizer = () => {
         setDrawing(false);
     };
 
+    const handleTouchStart = (e) => {
+        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
+        setDrawing(true);
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, false]);
+        setIsCanvasEmpty(false);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!drawing) return;
+        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, true]);
+        redraw();
+    };
+
+
+    const handleTouchEnd = () => {
+        setDrawing(false);
+    };
+
+    const handleTouchCancel = () => {
+        setDrawing(false);
+    };
+
     const clearCanvas = () => {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -121,11 +150,20 @@ const DigitRecognizer = () => {
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchCancel}
+                    onTouchMoveCapture={handleTouchMove}
                 />
             </div>
             <div className="button-container">
-                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas} disabled={isCanvasEmpty}>Очистить</button>
-                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit} disabled={isCanvasEmpty}>Распознать</button>
+                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas}
+                        disabled={isCanvasEmpty}>Очистить
+                </button>
+                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit}
+                        disabled={isCanvasEmpty}>Распознать
+                </button>
             </div>
             {prediction !== null && <p className="prediction">Предсказанная цифра: {prediction}</p>}
         </div>
