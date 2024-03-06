@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -12,6 +12,7 @@ const DigitRecognizer = () => {
     const [canvasHeight] = useState(350);
     const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
     const canvasRef = useRef(null);
+    const animationFrameRef = useRef(null);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -55,23 +56,20 @@ const DigitRecognizer = () => {
         setLastY(mouseY);
         setDrawing(true);
         setIsCanvasEmpty(false);
+        animationFrameRef.current = requestAnimationFrame(draw);
     };
 
     const handleMouseMove = (e) => {
         if (!drawing) return;
         const mouseX = e.clientX - e.target.getBoundingClientRect().left;
         const mouseY = e.clientY - e.target.getBoundingClientRect().top;
-        redraw(mouseX, mouseY);
         setLastX(mouseX);
         setLastY(mouseY);
     };
 
     const handleMouseUp = () => {
         setDrawing(false);
-    };
-
-    const handleMouseLeave = () => {
-        setDrawing(false);
+        cancelAnimationFrame(animationFrameRef.current);
     };
 
     const clearCanvas = () => {
@@ -82,7 +80,7 @@ const DigitRecognizer = () => {
         setIsCanvasEmpty(true);
     };
 
-    const redraw = (x, y) => {
+    const draw = () => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         ctx.strokeStyle = "white";
@@ -90,13 +88,28 @@ const DigitRecognizer = () => {
         ctx.lineWidth = 10;
 
         ctx.beginPath();
-        if (lastX && lastY) {
-            ctx.moveTo(lastX, lastY);
-        }
-        ctx.lineTo(x, y);
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(lastX, lastY);
         ctx.closePath();
         ctx.stroke();
+
+        animationFrameRef.current = requestAnimationFrame(draw);
     };
+
+    useEffect(() => {
+        const handleMouseUpOutside = () => {
+            if (drawing) {
+                setDrawing(false);
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
+
+        document.addEventListener('mouseup', handleMouseUpOutside);
+
+        return () => {
+            document.removeEventListener('mouseup', handleMouseUpOutside);
+        };
+    }, [drawing]);
 
     return (
         <div className="app-container">
@@ -110,15 +123,14 @@ const DigitRecognizer = () => {
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
                 />
             </div>
             <div className="button-container">
                 <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas}
-                        disabled={isCanvasEmpty}>Очистить
+                    disabled={isCanvasEmpty}>Очистить
                 </button>
                 <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit}
-                        disabled={isCanvasEmpty}>Распознать
+                    disabled={isCanvasEmpty}>Распознать
                 </button>
             </div>
             {prediction !== null && <p className="prediction">Предсказанная цифра: {prediction}</p>}
