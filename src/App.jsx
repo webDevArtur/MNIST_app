@@ -48,13 +48,33 @@ const DigitRecognizer = () => {
         setPrediction(maxIndex);
     };
 
+    const DRAW_INTERVAL = 5; // Интервал между записью точек (в пикселях)
+
+    const distanceBetweenPoints = (x1, y1, x2, y2) => {
+        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    };
+
     const handleMouseDown = (e) => {
-        startDrawing(e.clientX, e.clientY);
+        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
+        setDrawing(true);
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, false]);
+        setIsCanvasEmpty(false);
     };
 
     const handleMouseMove = (e) => {
         if (!drawing) return;
-        continueDrawing(e.clientX, e.clientY);
+        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
+        const lastIndex = clickX.length - 1;
+        if (lastIndex < 0 || distanceBetweenPoints(clickX[lastIndex], clickY[lastIndex], mouseX, mouseY) >= DRAW_INTERVAL) {
+            setClickX([...clickX, mouseX]);
+            setClickY([...clickY, mouseY]);
+            setClickDrag([...clickDrag, true]);
+            redraw();
+        }
     };
 
     const handleMouseUp = () => {
@@ -66,28 +86,8 @@ const DigitRecognizer = () => {
     };
 
     const handleTouchStart = (e) => {
-        const touch = e.touches[0];
-        startDrawing(touch.clientX, touch.clientY);
-    };
-
-    const handleTouchMove = (e) => {
-        e.preventDefault();
-        if (!drawing) return;
-        const touch = e.touches[0];
-        continueDrawing(touch.clientX, touch.clientY);
-    };
-
-    const handleTouchEnd = () => {
-        setDrawing(false);
-    };
-
-    const handleTouchCancel = () => {
-        setDrawing(false);
-    };
-
-    const startDrawing = (x, y) => {
-        const mouseX = x - document.getElementById('canvas').getBoundingClientRect().left;
-        const mouseY = y - document.getElementById('canvas').getBoundingClientRect().top;
+        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
         setDrawing(true);
         setClickX([...clickX, mouseX]);
         setClickY([...clickY, mouseY]);
@@ -95,13 +95,26 @@ const DigitRecognizer = () => {
         setIsCanvasEmpty(false);
     };
 
-    const continueDrawing = (x, y) => {
-        const mouseX = x - document.getElementById('canvas').getBoundingClientRect().left;
-        const mouseY = y - document.getElementById('canvas').getBoundingClientRect().top;
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, true]);
-        redraw();
+    const handleTouchMove = (e) => {
+        if (!drawing) return;
+        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
+        const lastIndex = clickX.length - 1;
+        if (lastIndex < 0 || distanceBetweenPoints(clickX[lastIndex], clickY[lastIndex], mouseX, mouseY) >= DRAW_INTERVAL) {
+            setClickX([...clickX, mouseX]);
+            setClickY([...clickY, mouseY]);
+            setClickDrag([...clickDrag, true]);
+            redraw();
+        }
+    };
+
+
+    const handleTouchEnd = () => {
+        setDrawing(false);
+    };
+
+    const handleTouchCancel = () => {
+        setDrawing(false);
     };
 
     const clearCanvas = () => {
@@ -153,6 +166,7 @@ const DigitRecognizer = () => {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchCancel}
+                    onTouchMoveCapture={handleTouchMove}
                 />
             </div>
             <div className="button-container">
