@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -123,6 +123,10 @@ const DigitRecognizer = () => {
                     onMouseMove={handleMove}
                     onMouseUp={handleEnd}
                     onMouseLeave={handleEnd}
+                    onTouchStart={handleStart}
+                    onTouchMove={handleMove}
+                    onTouchEnd={handleEnd}
+                    onTouchCancel={handleEnd}
                 />
             </div>
             <div className="button-container">
