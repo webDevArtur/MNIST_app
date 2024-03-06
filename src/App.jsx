@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
+import debounce from 'lodash/debounce';
 
 const DigitRecognizer = () => {
     const [model, setModel] = useState(null);
@@ -65,6 +66,10 @@ const DigitRecognizer = () => {
         setInputType(e.type.startsWith('touch') ? 'touch' : 'mouse');
     };
 
+    const debouncedHandleMove = useRef(
+        debounce((e) => handleMove(e), 10)
+    ).current;
+
     const handleMove = (e) => {
         if (!drawingRef.current || e.type.startsWith('touch') && inputType !== 'touch' || e.type.startsWith('mouse') && inputType !== 'mouse') return;
         const mouseX = e.clientX || e.touches[0].clientX;
@@ -120,11 +125,11 @@ const DigitRecognizer = () => {
                     height={350}
                     className="canvas"
                     onMouseDown={handleStart}
-                    onMouseMove={handleMove}
+                    onMouseMove={debouncedHandleMove}
                     onMouseUp={handleEnd}
                     onMouseLeave={handleEnd}
                     onTouchStart={handleStart}
-                    onTouchMove={handleMove}
+                    onTouchMove={debouncedHandleMove}
                     onTouchEnd={handleEnd}
                     onTouchCancel={handleEnd}
                 />
