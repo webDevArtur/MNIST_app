@@ -61,7 +61,7 @@ const DigitRecognizer = () => {
         const mouseY = e.clientY - e.target.getBoundingClientRect().top;
         clickXRef.current.push(mouseX);
         clickYRef.current.push(mouseY);
-        clickDragRef.current.push(false);
+        clickDragRef.current.push(true); // Изменим на true, чтобы фиксировать движение
     };
 
     const redraw = () => {
@@ -98,7 +98,7 @@ const DigitRecognizer = () => {
     const handleMove = (e) => {
         if (!drawingRef.current) return;
         addClick(e);
-        requestAnimationFrame(draw); 
+        requestAnimationFrame(draw);
     };
 
     const clearCanvas = () => {
