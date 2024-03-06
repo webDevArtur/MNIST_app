@@ -51,12 +51,12 @@ const DigitRecognizer = () => {
     const handleMouseDown = (e) => {
         setDrawing(true);
         setIsCanvasEmpty(false);
-        recordPoint(e);
+        recordPoint(e.clientX, e.clientY);
     };
 
     const handleMouseMove = (e) => {
         if (drawing) {
-            recordPoint(e);
+            recordPoint(e.clientX, e.clientY);
         }
     };
 
@@ -71,12 +71,12 @@ const DigitRecognizer = () => {
     const handleTouchStart = (e) => {
         setDrawing(true);
         setIsCanvasEmpty(false);
-        recordPoint(e.touches[0]);
+        recordPoint(e.touches[0].clientX, e.touches[0].clientY);
     };
 
     const handleTouchMove = (e) => {
         if (drawing) {
-            recordPoint(e.touches[0]);
+            recordPoint(e.touches[0].clientX, e.touches[0].clientY);
         }
     };
 
@@ -88,21 +88,16 @@ const DigitRecognizer = () => {
         setDrawing(false);
     };
 
-    const recordPoint = (e) => {
-        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
-        const context = virtualCanvasRef.current.getContext('2d');
+    const recordPoint = (x, y) => {
+        const virtualCanvas = virtualCanvasRef.current;
+        const context = virtualCanvas.getContext('2d');
         context.strokeStyle = "white";
         context.lineJoin = "round";
         context.lineWidth = 15;
 
         context.beginPath();
-        if (drawing) {
-            context.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-        } else {
-            context.moveTo(mouseX, mouseY);
-        }
-        context.lineTo(mouseX, mouseY);
+        context.moveTo(x - virtualCanvas.getBoundingClientRect().left, y - virtualCanvas.getBoundingClientRect().top);
+        context.lineTo(x - virtualCanvas.getBoundingClientRect().left, y - virtualCanvas.getBoundingClientRect().top);
         context.closePath();
         context.stroke();
     };
