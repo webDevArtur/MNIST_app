@@ -67,7 +67,7 @@ const DigitRecognizer = () => {
     };
 
     const debouncedHandleMove = useRef(
-        debounce((e) => handleMove(e), 10)
+        debounce((e) => handleMove(e), 15)
     ).current;
 
     const handleMove = (e) => {
