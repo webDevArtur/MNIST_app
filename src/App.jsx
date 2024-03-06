@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect} from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -12,8 +12,6 @@ const DigitRecognizer = () => {
     const [canvasWidth] = useState(350);
     const [canvasHeight] = useState(350);
     const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
-    const canvasRef = useRef(null);
-    const offscreenCanvasRef = useRef(null);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -26,14 +24,6 @@ const DigitRecognizer = () => {
         };
         loadModel();
     }, []);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        const offscreenCanvas = document.createElement("canvas");
-        offscreenCanvas.width = canvasWidth;
-        offscreenCanvas.height = canvasHeight;
-        offscreenCanvasRef.current = offscreenCanvas;
-    }, [canvasWidth, canvasHeight]);
 
     const preprocessCanvas = (image) => {
         const tensor = tf.browser.fromPixels(image)
@@ -50,7 +40,8 @@ const DigitRecognizer = () => {
             console.error('Model not loaded');
             return;
         }
-        const tensor = preprocessCanvas(offscreenCanvasRef.current);
+        const canvas = document.getElementById('canvas');
+        const tensor = preprocessCanvas(canvas);
         const predictions = await model.predict(tensor).data();
         const results = Array.from(predictions);
         const maxIndex = results.indexOf(Math.max(...results));
@@ -58,23 +49,23 @@ const DigitRecognizer = () => {
     };
 
     const handleMouseDown = (e) => {
-        const mouseX = Math.floor(e.clientX - e.target.getBoundingClientRect().left);
-        const mouseY = Math.floor(e.clientY - e.target.getBoundingClientRect().top);
+        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
         setDrawing(true);
-        setClickX([mouseX]);
-        setClickY([mouseY]);
-        setClickDrag([false]);
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, false]);
         setIsCanvasEmpty(false);
     };
 
     const handleMouseMove = (e) => {
         if (!drawing) return;
-        const mouseX = Math.floor(e.clientX - e.target.getBoundingClientRect().left);
-        const mouseY = Math.floor(e.clientY - e.target.getBoundingClientRect().top);
-        setClickX(prevState => [...prevState, mouseX]);
-        setClickY(prevState => [...prevState, mouseY]);
-        setClickDrag(prevState => [...prevState, true]);
-        redraw(mouseX, mouseY);
+        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, true]);
+        redraw();
     };
 
     const handleMouseUp = () => {
@@ -87,25 +78,26 @@ const DigitRecognizer = () => {
 
     const handleTouchStart = (e) => {
         const rect = e.target.getBoundingClientRect();
-        const mouseX = Math.floor(e.touches[0].clientX - rect.left);
-        const mouseY = Math.floor(e.touches[0].clientY - rect.top);
+        const mouseX = e.touches[0].clientX - rect.left;
+        const mouseY = e.touches[0].clientY - rect.top;
         setDrawing(true);
-        setClickX([mouseX]);
-        setClickY([mouseY]);
-        setClickDrag([false]);
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, false]);
         setIsCanvasEmpty(false);
     };
 
     const handleTouchMove = (e) => {
         if (!drawing) return;
         const rect = e.target.getBoundingClientRect();
-        const mouseX = Math.floor(e.touches[0].clientX - rect.left);
-        const mouseY = Math.floor(e.touches[0].clientY - rect.top);
-        setClickX(prevState => [...prevState, mouseX]);
-        setClickY(prevState => [...prevState, mouseY]);
-        setClickDrag(prevState => [...prevState, true]);
-        redraw(mouseX, mouseY);
+        const mouseX = e.touches[0].clientX - rect.left;
+        const mouseY = e.touches[0].clientY - rect.top;
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, true]);
+        redraw();
     };
+
 
     const handleTouchEnd = () => {
         setDrawing(false);
@@ -116,8 +108,9 @@ const DigitRecognizer = () => {
     };
 
     const clearCanvas = () => {
-        const ctx = offscreenCanvasRef.current.getContext('2d');
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         setPrediction(null);
         setClickX([]);
         setClickY([]);
@@ -125,10 +118,10 @@ const DigitRecognizer = () => {
         setIsCanvasEmpty(true);
     };
 
-    const redraw = (x, y) => {
-        const offscreenCanvas = offscreenCanvasRef.current;
-        const ctx = offscreenCanvas.getContext('2d');
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    const redraw = () => {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = "white";
         ctx.lineJoin = "round";
         ctx.lineWidth = 15;
@@ -144,12 +137,6 @@ const DigitRecognizer = () => {
             ctx.closePath();
             ctx.stroke();
         }
-
-        // Копируем содержимое offscreen canvas на основной canvas
-        const canvas = canvasRef.current;
-        const canvasCtx = canvas.getContext('2d');
-        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-        canvasCtx.drawImage(offscreenCanvas, 0, 0);
     };
 
     return (
@@ -157,7 +144,6 @@ const DigitRecognizer = () => {
             <h2 className="app-title">Распознавание рукописных цифр</h2>
             <div className="canvas-container">
                 <canvas
-                    ref={canvasRef}
                     id="canvas"
                     width={canvasWidth}
                     height={canvasHeight}
