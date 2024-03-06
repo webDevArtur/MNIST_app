@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -6,12 +6,12 @@ const DigitRecognizer = () => {
     const [model, setModel] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [drawing, setDrawing] = useState(false);
-    const [clickX, setClickX] = useState([]);
-    const [clickY, setClickY] = useState([]);
-    const [clickDrag, setClickDrag] = useState([]);
+    const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
     const [canvasWidth] = useState(350);
     const [canvasHeight] = useState(350);
-    const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+
+    const virtualCanvasRef = useRef(null);
+    const visibleCanvasRef = useRef(null);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -40,7 +40,7 @@ const DigitRecognizer = () => {
             console.error('Model not loaded');
             return;
         }
-        const canvas = document.getElementById('canvas');
+        const canvas = visibleCanvasRef.current;
         const tensor = preprocessCanvas(canvas);
         const predictions = await model.predict(tensor).data();
         const results = Array.from(predictions);
@@ -48,32 +48,15 @@ const DigitRecognizer = () => {
         setPrediction(maxIndex);
     };
 
-    const DRAW_INTERVAL = 5; // Интервал между записью точек (в пикселях)
-
-    const distanceBetweenPoints = (x1, y1, x2, y2) => {
-        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-    };
-
     const handleMouseDown = (e) => {
-        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
         setDrawing(true);
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, false]);
         setIsCanvasEmpty(false);
+        recordPoint(e);
     };
 
     const handleMouseMove = (e) => {
-        if (!drawing) return;
-        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
-        const lastIndex = clickX.length - 1;
-        if (lastIndex < 0 || distanceBetweenPoints(clickX[lastIndex], clickY[lastIndex], mouseX, mouseY) >= DRAW_INTERVAL) {
-            setClickX([...clickX, mouseX]);
-            setClickY([...clickY, mouseY]);
-            setClickDrag([...clickDrag, true]);
-            redraw();
+        if (drawing) {
+            recordPoint(e);
         }
     };
 
@@ -86,28 +69,16 @@ const DigitRecognizer = () => {
     };
 
     const handleTouchStart = (e) => {
-        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
         setDrawing(true);
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, false]);
         setIsCanvasEmpty(false);
+        recordPoint(e.touches[0]);
     };
 
     const handleTouchMove = (e) => {
-        if (!drawing) return;
-        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
-        const lastIndex = clickX.length - 1;
-        if (lastIndex < 0 || distanceBetweenPoints(clickX[lastIndex], clickY[lastIndex], mouseX, mouseY) >= DRAW_INTERVAL) {
-            setClickX([...clickX, mouseX]);
-            setClickY([...clickY, mouseY]);
-            setClickDrag([...clickDrag, true]);
-            redraw();
+        if (drawing) {
+            recordPoint(e.touches[0]);
         }
     };
-
 
     const handleTouchEnd = () => {
         setDrawing(false);
@@ -117,44 +88,58 @@ const DigitRecognizer = () => {
         setDrawing(false);
     };
 
+    const recordPoint = (e) => {
+        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
+        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
+        const context = virtualCanvasRef.current.getContext('2d');
+        context.strokeStyle = "white";
+        context.lineJoin = "round";
+        context.lineWidth = 15;
+
+        context.beginPath();
+        if (drawing) {
+            context.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+        } else {
+            context.moveTo(mouseX, mouseY);
+        }
+        context.lineTo(mouseX, mouseY);
+        context.closePath();
+        context.stroke();
+    };
+
     const clearCanvas = () => {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const context = virtualCanvasRef.current.getContext('2d');
+        context.clearRect(0, 0, canvasWidth, canvasHeight);
         setPrediction(null);
-        setClickX([]);
-        setClickY([]);
-        setClickDrag([]);
         setIsCanvasEmpty(true);
     };
 
-    const redraw = () => {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "white";
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 15;
-
-        for (let i = 0; i < clickX.length; i++) {
-            ctx.beginPath();
-            if (clickDrag[i] && i) {
-                ctx.moveTo(clickX[i - 1], clickY[i - 1]);
-            } else {
-                ctx.moveTo(clickX[i] - 1, clickY[i]);
-            }
-            ctx.lineTo(clickX[i], clickY[i]);
-            ctx.closePath();
-            ctx.stroke();
-        }
+    const copyVirtualCanvasToVisibleCanvas = () => {
+        const virtualCanvas = virtualCanvasRef.current;
+        const visibleCanvas = visibleCanvasRef.current;
+        const context = visibleCanvas.getContext('2d');
+        context.drawImage(virtualCanvas, 0, 0);
     };
+
+    useEffect(() => {
+        if (!drawing) {
+            copyVirtualCanvasToVisibleCanvas();
+        }
+    }, [drawing]);
 
     return (
         <div className="app-container">
             <h2 className="app-title">Распознавание рукописных цифр</h2>
             <div className="canvas-container">
                 <canvas
-                    id="canvas"
+                    ref={virtualCanvasRef}
+                    width={canvasWidth}
+                    height={canvasHeight}
+                    className="canvas"
+                    style={{ display: 'none' }}
+                />
+                <canvas
+                    ref={visibleCanvasRef}
                     width={canvasWidth}
                     height={canvasHeight}
                     className="canvas"
@@ -166,7 +151,6 @@ const DigitRecognizer = () => {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchCancel}
-                    onTouchMoveCapture={handleTouchMove}
                 />
             </div>
             <div className="button-container">
