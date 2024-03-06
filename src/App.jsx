@@ -6,6 +6,7 @@ const DigitRecognizer = () => {
     const [model, setModel] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+    const [inputType, setInputType] = useState(null);
     const canvasRef = useRef(null);
     const ctxRef = useRef(null);
     const drawingRef = useRef(false);
@@ -61,10 +62,11 @@ const DigitRecognizer = () => {
         clickYRef.current.push(mouseY - canvasRef.current.getBoundingClientRect().top);
         clickDragRef.current.push(false);
         setIsCanvasEmpty(false);
+        setInputType(e.type.startsWith('touch') ? 'touch' : 'mouse');
     };
 
     const handleMove = (e) => {
-        if (!drawingRef.current) return;
+        if (!drawingRef.current || e.type.startsWith('touch') && inputType !== 'touch' || e.type.startsWith('mouse') && inputType !== 'mouse') return;
         const mouseX = e.clientX || e.touches[0].clientX;
         const mouseY = e.clientY || e.touches[0].clientY;
         clickXRef.current.push(mouseX - canvasRef.current.getBoundingClientRect().left);
@@ -121,10 +123,6 @@ const DigitRecognizer = () => {
                     onMouseMove={handleMove}
                     onMouseUp={handleEnd}
                     onMouseLeave={handleEnd}
-                    onTouchStart={handleStart}
-                    onTouchMove={handleMove}
-                    onTouchEnd={handleEnd}
-                    onTouchCancel={handleEnd}
                 />
             </div>
             <div className="button-container">
