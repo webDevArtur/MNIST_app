@@ -126,7 +126,9 @@ const DigitRecognizer = () => {
     };
 
     const redraw = (x, y) => {
-        const ctx = offscreenCanvasRef.current.getContext('2d');
+        const offscreenCanvas = offscreenCanvasRef.current;
+        const ctx = offscreenCanvas.getContext('2d');
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
         ctx.strokeStyle = "white";
         ctx.lineJoin = "round";
         ctx.lineWidth = 15;
@@ -142,6 +144,12 @@ const DigitRecognizer = () => {
             ctx.closePath();
             ctx.stroke();
         }
+
+        // Копируем содержимое offscreen canvas на основной canvas
+        const canvas = canvasRef.current;
+        const canvasCtx = canvas.getContext('2d');
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+        canvasCtx.drawImage(offscreenCanvas, 0, 0);
     };
 
     return (
