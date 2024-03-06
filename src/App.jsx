@@ -1,15 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
 const DigitRecognizer = () => {
     const [model, setModel] = useState(null);
     const [prediction, setPrediction] = useState(null);
-    const drawingRef = useRef(false);
-    const clickXRef = useRef([]);
-    const clickYRef = useRef([]);
-    const clickDragRef = useRef([]);
+    const [drawing, setDrawing] = useState(false);
+    const [clickX, setClickX] = useState([]);
+    const [clickY, setClickY] = useState([]);
+    const [clickDrag, setClickDrag] = useState([]);
+    const [canvasWidth] = useState(350);
+    const [canvasHeight] = useState(350);
     const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+
+    const canvasRef = useMemo(() => ({
+        x: document.getElementById('canvas').getBoundingClientRect().left,
+        y: document.getElementById('canvas').getBoundingClientRect().top
+    }), []);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -23,7 +30,7 @@ const DigitRecognizer = () => {
         loadModel();
     }, []);
 
-    const preprocessCanvas = (image) => {
+    const preprocessCanvas = useCallback((image) => {
         const tensor = tf.browser.fromPixels(image)
             .resizeNearestNeighbor([28, 28])
             .mean(2)
@@ -31,9 +38,9 @@ const DigitRecognizer = () => {
             .expandDims()
             .toFloat();
         return tensor.div(255.0);
-    };
+    }, []);
 
-    const predictDigit = async () => {
+    const predictDigit = useCallback(async () => {
         if (!model) {
             console.error('Model not loaded');
             return;
@@ -44,73 +51,95 @@ const DigitRecognizer = () => {
         const results = Array.from(predictions);
         const maxIndex = results.indexOf(Math.max(...results));
         setPrediction(maxIndex);
-    };
+    }, [model, preprocessCanvas]);
 
-    const handleStart = (e) => {
-        drawingRef.current = true;
+    const handleMouseDown = useCallback((e) => {
+        const mouseX = e.clientX - canvasRef.x;
+        const mouseY = e.clientY - canvasRef.y;
+        setDrawing(true);
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, false]);
         setIsCanvasEmpty(false);
-        addClick(e);
-    };
+    }, [canvasRef, clickX, clickY, clickDrag]);
 
-    const handleEnd = () => {
-        drawingRef.current = false;
-    };
+    const handleMouseMove = useCallback((e) => {
+        if (!drawing) return;
+        const mouseX = e.clientX - canvasRef.x;
+        const mouseY = e.clientY - canvasRef.y;
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, true]);
+        redraw();
+    }, [drawing, canvasRef, clickX, clickY, clickDrag, redraw]);
 
-    const addClick = (e) => {
-        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
-        clickXRef.current.push(mouseX);
-        clickYRef.current.push(mouseY);
-        clickDragRef.current.push(true); // Изменим на true, чтобы фиксировать движение
-    };
+    const handleMouseUp = useCallback(() => {
+        setDrawing(false);
+    }, []);
 
-    const redraw = () => {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "white";
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 5;
-        requestAnimationFrame(draw);
-    };
+    const handleMouseLeave = useCallback(() => {
+        setDrawing(false);
+    }, []);
 
-    const draw = () => {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "white";
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 5;
+    const handleTouchStart = useCallback((e) => {
+        const mouseX = e.touches[0].clientX - canvasRef.x;
+        const mouseY = e.touches[0].clientY - canvasRef.y;
+        setDrawing(true);
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, false]);
+        setIsCanvasEmpty(false);
+    }, [canvasRef, clickX, clickY, clickDrag]);
 
-        for (let i = 0; i < clickXRef.current.length; i++) {
-            ctx.beginPath();
-            if (clickDragRef.current[i] && i) {
-                ctx.moveTo(clickXRef.current[i - 1], clickYRef.current[i - 1]);
-            } else {
-                ctx.moveTo(clickXRef.current[i] - 1, clickYRef.current[i]);
-            }
-            ctx.lineTo(clickXRef.current[i], clickYRef.current[i]);
-            ctx.closePath();
-            ctx.stroke();
-        }
-    };
+    const handleTouchMove = useCallback((e) => {
+        if (!drawing) return;
+        const mouseX = e.touches[0].clientX - canvasRef.x;
+        const mouseY = e.touches[0].clientY - canvasRef.y;
+        setClickX([...clickX, mouseX]);
+        setClickY([...clickY, mouseY]);
+        setClickDrag([...clickDrag, true]);
+        redraw();
+    }, [drawing, canvasRef, clickX, clickY, clickDrag, redraw]);
 
-    const handleMove = (e) => {
-        if (!drawingRef.current) return;
-        addClick(e);
-        requestAnimationFrame(draw);
-    };
+    const handleTouchEnd = useCallback(() => {
+        setDrawing(false);
+    }, []);
 
-    const clearCanvas = () => {
+    const handleTouchCancel = useCallback(() => {
+        setDrawing(false);
+    }, []);
+
+    const clearCanvas = useCallback(() => {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         setPrediction(null);
-        clickXRef.current = [];
-        clickYRef.current = [];
-        clickDragRef.current = [];
+        setClickX([]);
+        setClickY([]);
+        setClickDrag([]);
         setIsCanvasEmpty(true);
-    };
+    }, []);
+
+    const redraw = useCallback(() => {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "white";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 10;
+
+        for (let i = 0; i < clickX.length; i++) {
+            ctx.beginPath();
+            if (clickDrag[i] && i) {
+                ctx.moveTo(clickX[i - 1], clickY[i - 1]);
+            } else {
+                ctx.moveTo(clickX[i] - 1, clickY[i]);
+            }
+            ctx.lineTo(clickX[i], clickY[i]);
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }, [clickX, clickY, clickDrag]);
 
     return (
         <div className="app-container">
@@ -118,21 +147,27 @@ const DigitRecognizer = () => {
             <div className="canvas-container">
                 <canvas
                     id="canvas"
-                    width={350}
-                    height={350}
+                    width={canvasWidth}
+                    height={canvasHeight}
                     className="canvas"
-                    onMouseDown={handleStart}
-                    onMouseMove={handleMove}
-                    onMouseUp={handleEnd}
-                    onTouchStart={handleStart}
-                    onTouchMove={handleMove}
-                    onTouchEnd={handleEnd}
-                    onTouchCancel={handleEnd}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchCancel}
+                    onTouchMoveCapture={handleTouchMove}
                 />
             </div>
             <div className="button-container">
-                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas} disabled={isCanvasEmpty}>Очистить</button>
-                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit} disabled={isCanvasEmpty}>Распознать</button>
+                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas}
+                        disabled={isCanvasEmpty}>Очистить
+                </button>
+                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit}
+                        disabled={isCanvasEmpty}>Распознать
+                </button>
             </div>
             {prediction !== null && <p className="prediction">Предсказанная цифра: {prediction}</p>}
         </div>
