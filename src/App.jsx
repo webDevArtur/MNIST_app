@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -49,22 +49,24 @@ const DigitRecognizer = () => {
     };
 
     const handleMouseDown = (e) => {
-        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
+        const rect = e.target.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
         setDrawing(true);
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, false]);
+        setClickX([mouseX]);
+        setClickY([mouseY]);
+        setClickDrag([false]);
         setIsCanvasEmpty(false);
     };
 
     const handleMouseMove = (e) => {
         if (!drawing) return;
-        const mouseX = e.clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.clientY - e.target.getBoundingClientRect().top;
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, true]);
+        const rect = e.target.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        setClickX(prevX => [...prevX, mouseX]);
+        setClickY(prevY => [...prevY, mouseY]);
+        setClickDrag(prevDrag => [...prevDrag, true]);
         redraw();
     };
 
@@ -73,37 +75,6 @@ const DigitRecognizer = () => {
     };
 
     const handleMouseLeave = () => {
-        setDrawing(false);
-    };
-
-    const handleTouchStart = (e) => {
-        const rect = e.target.getBoundingClientRect();
-        const mouseX = e.touches[0].clientX - rect.left;
-        const mouseY = e.touches[0].clientY - rect.top;
-        setDrawing(true);
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, false]);
-        setIsCanvasEmpty(false);
-    };
-
-    const handleTouchMove = (e) => {
-        if (!drawing) return;
-        const rect = e.target.getBoundingClientRect();
-        const mouseX = e.touches[0].clientX - rect.left;
-        const mouseY = e.touches[0].clientY - rect.top;
-        setClickX([...clickX, mouseX]);
-        setClickY([...clickY, mouseY]);
-        setClickDrag([...clickDrag, true]);
-        redraw();
-    };
-
-
-    const handleTouchEnd = () => {
-        setDrawing(false);
-    };
-
-    const handleTouchCancel = () => {
         setDrawing(false);
     };
 
@@ -152,10 +123,10 @@ const DigitRecognizer = () => {
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    onTouchCancel={handleTouchCancel}
+                    onTouchStart={handleMouseDown}
+                    onTouchMove={handleMouseMove}
+                    onTouchEnd={handleMouseUp}
+                    onTouchCancel={handleMouseLeave}
                 />
             </div>
             <div className="button-container">
