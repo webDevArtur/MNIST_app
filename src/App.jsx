@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
@@ -11,6 +11,7 @@ const DigitRecognizer = () => {
     const [canvasWidth] = useState(350);
     const [canvasHeight] = useState(350);
     const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+    const canvasRef = useRef(null);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -39,7 +40,7 @@ const DigitRecognizer = () => {
             console.error('Model not loaded');
             return;
         }
-        const canvas = document.getElementById('canvas');
+        const canvas = canvasRef.current;
         const tensor = preprocessCanvas(canvas);
         const predictions = await model.predict(tensor).data();
         const results = Array.from(predictions);
@@ -60,9 +61,9 @@ const DigitRecognizer = () => {
         if (!drawing) return;
         const mouseX = e.clientX - e.target.getBoundingClientRect().left;
         const mouseY = e.clientY - e.target.getBoundingClientRect().top;
+        redraw(mouseX, mouseY);
         setLastX(mouseX);
         setLastY(mouseY);
-        redraw(mouseX, mouseY);
     };
 
     const handleMouseUp = () => {
@@ -73,35 +74,8 @@ const DigitRecognizer = () => {
         setDrawing(false);
     };
 
-    const handleTouchStart = (e) => {
-        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
-        setLastX(mouseX);
-        setLastY(mouseY);
-        setDrawing(true);
-        setIsCanvasEmpty(false);
-    };
-
-    const handleTouchMove = (e) => {
-        if (!drawing) return;
-        const mouseX = e.touches[0].clientX - e.target.getBoundingClientRect().left;
-        const mouseY = e.touches[0].clientY - e.target.getBoundingClientRect().top;
-        setLastX(mouseX);
-        setLastY(mouseY);
-        redraw(mouseX, mouseY);
-    };
-
-
-    const handleTouchEnd = () => {
-        setDrawing(false);
-    };
-
-    const handleTouchCancel = () => {
-        setDrawing(false);
-    };
-
     const clearCanvas = () => {
-        const canvas = document.getElementById('canvas');
+        const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         setPrediction(null);
@@ -109,7 +83,7 @@ const DigitRecognizer = () => {
     };
 
     const redraw = (x, y) => {
-        const canvas = document.getElementById('canvas');
+        const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         ctx.strokeStyle = "white";
         ctx.lineJoin = "round";
@@ -129,7 +103,7 @@ const DigitRecognizer = () => {
             <h2 className="app-title">Распознавание рукописных цифр</h2>
             <div className="canvas-container">
                 <canvas
-                    id="canvas"
+                    ref={canvasRef}
                     width={canvasWidth}
                     height={canvasHeight}
                     className="canvas"
@@ -137,10 +111,6 @@ const DigitRecognizer = () => {
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    onTouchCancel={handleTouchCancel}
                 />
             </div>
             <div className="button-container">
