@@ -11,7 +11,9 @@ const DigitRecognizer = () => {
     const [canvasHeight] = useState(350);
 
     const canvasRef = useRef(null);
-    const lastPointRef = useRef(null);
+    const drawingRef = useRef(false);
+    const clickX = useRef([]);
+    const clickY = useRef([]);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -56,45 +58,44 @@ const DigitRecognizer = () => {
         setPrediction(maxIndex);
     };
 
-    const recordPoint = (x, y, dragging) => {
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        context.beginPath();
-        if (lastPointRef.current && dragging) {
-            const lastX = lastPointRef.current.x;
-            const lastY = lastPointRef.current.y;
-            context.moveTo(lastX, lastY);
-        }
-        context.lineTo(x, y);
-        context.closePath();
-        context.stroke();
-
-        lastPointRef.current = { x, y };
+    const recordPoint = (x, y) => {
+        clickX.current.push(x);
+        clickY.current.push(y);
     };
 
     const handleMouseDown = (e) => {
+        e.preventDefault();
         const mouseX = e.clientX - e.target.getBoundingClientRect().left;
         const mouseY = e.clientY - e.target.getBoundingClientRect().top;
         setDrawing(true);
         setIsCanvasEmpty(false);
-        recordPoint(mouseX, mouseY, false);
+        recordPoint(mouseX, mouseY);
     };
 
     const handleMouseMove = (e) => {
+        e.preventDefault();
         if (!drawing) return;
         const mouseX = e.clientX - e.target.getBoundingClientRect().left;
         const mouseY = e.clientY - e.target.getBoundingClientRect().top;
-        recordPoint(mouseX, mouseY, true);
+        recordPoint(mouseX, mouseY);
+        redraw();
     };
 
     const handleMouseUp = () => {
         setDrawing(false);
-        lastPointRef.current = null;
     };
 
-    const handleMouseLeave = () => {
-        setDrawing(false);
-        lastPointRef.current = null;
+    const redraw = () => {
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.beginPath();
+        context.moveTo(clickX.current[0], clickY.current[0]);
+        for (let i = 1; i < clickX.current.length; i++) {
+            context.lineTo(clickX.current[i], clickY.current[i]);
+        }
+        context.stroke();
+        context.closePath();
     };
 
     const clearCanvas = () => {
@@ -102,6 +103,8 @@ const DigitRecognizer = () => {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         setPrediction(null);
+        clickX.current = [];
+        clickY.current = [];
         setIsCanvasEmpty(true);
     };
 
@@ -117,7 +120,9 @@ const DigitRecognizer = () => {
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleMouseDown}
+                    onTouchMove={handleMouseMove}
+                    onTouchEnd={handleMouseUp}
                 />
             </div>
             <div className="button-container">
