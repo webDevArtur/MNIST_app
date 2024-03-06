@@ -6,12 +6,9 @@ const DigitRecognizer = () => {
     const [model, setModel] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [drawing, setDrawing] = useState(false);
-    const [clickX, setClickX] = useState([]);
-    const [clickY, setClickY] = useState([]);
-    const [clickDrag, setClickDrag] = useState([]);
-    const [canvasWidth] = useState(350);
-    const [canvasHeight] = useState(350);
-    const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+    const [points, setPoints] = useState([]);
+    const canvasWidth = 350;
+    const canvasHeight = 350;
 
     useEffect(() => {
         const loadModel = async () => {
@@ -35,6 +32,36 @@ const DigitRecognizer = () => {
         return tensor.div(255.0);
     };
 
+    const handleMouseDown = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        setDrawing(true);
+        setPoints([{ x: mouseX, y: mouseY }]);
+    };
+
+    const handleMouseMove = (e) => {
+        if (!drawing) return;
+        const rect = e.target.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        setPoints([...points, { x: mouseX, y: mouseY }]);
+        redraw();
+    };
+
+    const handleMouseUp = () => {
+        setDrawing(false);
+    };
+
+    const handleMouseLeave = () => {
+        setDrawing(false);
+    };
+
+    const clearCanvas = () => {
+        setPrediction(null);
+        setPoints([]);
+    };
+
     const predictDigit = async () => {
         if (!model) {
             console.error('Model not loaded');
@@ -48,47 +75,6 @@ const DigitRecognizer = () => {
         setPrediction(maxIndex);
     };
 
-    const handleMouseDown = (e) => {
-        const rect = e.target.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        setDrawing(true);
-        setClickX([mouseX]);
-        setClickY([mouseY]);
-        setClickDrag([false]);
-        setIsCanvasEmpty(false);
-    };
-
-    const handleMouseMove = (e) => {
-        if (!drawing) return;
-        const rect = e.target.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        setClickX(prevX => [...prevX, mouseX]);
-        setClickY(prevY => [...prevY, mouseY]);
-        setClickDrag(prevDrag => [...prevDrag, true]);
-        redraw();
-    };
-
-    const handleMouseUp = () => {
-        setDrawing(false);
-    };
-
-    const handleMouseLeave = () => {
-        setDrawing(false);
-    };
-
-    const clearCanvas = () => {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        setPrediction(null);
-        setClickX([]);
-        setClickY([]);
-        setClickDrag([]);
-        setIsCanvasEmpty(true);
-    };
-
     const redraw = () => {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -97,17 +83,17 @@ const DigitRecognizer = () => {
         ctx.lineJoin = "round";
         ctx.lineWidth = 15;
 
-        for (let i = 0; i < clickX.length; i++) {
+        points.forEach((point, i) => {
             ctx.beginPath();
-            if (clickDrag[i] && i) {
-                ctx.moveTo(clickX[i - 1], clickY[i - 1]);
+            if (i && points[i - 1].dragging) {
+                ctx.moveTo(points[i - 1].x, points[i - 1].y);
             } else {
-                ctx.moveTo(clickX[i] - 1, clickY[i]);
+                ctx.moveTo(point.x - 1, point.y);
             }
-            ctx.lineTo(clickX[i], clickY[i]);
+            ctx.lineTo(point.x, point.y);
             ctx.closePath();
             ctx.stroke();
-        }
+        });
     };
 
     return (
@@ -130,12 +116,8 @@ const DigitRecognizer = () => {
                 />
             </div>
             <div className="button-container">
-                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas}
-                        disabled={isCanvasEmpty}>Очистить
-                </button>
-                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit}
-                        disabled={isCanvasEmpty}>Распознать
-                </button>
+                <button className={`btn btn-clear ${points.length === 0 ? 'disabled' : ''}`} onClick={clearCanvas} disabled={points.length === 0}>Очистить</button>
+                <button className={`btn btn-predict ${points.length === 0 ? 'disabled' : ''}`} onClick={predictDigit} disabled={points.length === 0}>Распознать</button>
             </div>
             {prediction !== null && <p className="prediction">Предсказанная цифра: {prediction}</p>}
         </div>
