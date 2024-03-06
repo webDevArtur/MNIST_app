@@ -10,8 +10,10 @@ const DigitRecognizer = () => {
     const [canvasWidth] = useState(350);
     const [canvasHeight] = useState(350);
 
-    const virtualCanvasRef = useRef(null);
-    const visibleCanvasRef = useRef(null);
+    const canvasRef = useRef(null);
+    const clickX = useRef([]);
+    const clickY = useRef([]);
+    const clickDrag = useRef([]);
 
     useEffect(() => {
         const loadModel = async () => {
@@ -23,6 +25,14 @@ const DigitRecognizer = () => {
             }
         };
         loadModel();
+    }, []);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        context.strokeStyle = "white";
+        context.lineJoin = "round";
+        context.lineWidth = 15;
     }, []);
 
     const preprocessCanvas = (image) => {
@@ -40,7 +50,7 @@ const DigitRecognizer = () => {
             console.error('Model not loaded');
             return;
         }
-        const canvas = visibleCanvasRef.current;
+        const canvas = canvasRef.current;
         const tensor = preprocessCanvas(canvas);
         const predictions = await model.predict(tensor).data();
         const results = Array.from(predictions);
@@ -48,16 +58,37 @@ const DigitRecognizer = () => {
         setPrediction(maxIndex);
     };
 
+    const recordPoint = (x, y, dragging) => {
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        context.beginPath();
+        if (dragging && clickX.current.length) {
+            context.moveTo(clickX.current[clickX.current.length - 1], clickY.current[clickY.current.length - 1]);
+        } else {
+            context.moveTo(x - 1, y);
+        }
+        context.lineTo(x, y);
+        context.closePath();
+        context.stroke();
+
+        clickX.current.push(x);
+        clickY.current.push(y);
+        clickDrag.current.push(dragging);
+    };
+
     const handleMouseDown = (e) => {
+        const mouseX = e.clientX - canvasRef.current.getBoundingClientRect().left;
+        const mouseY = e.clientY - canvasRef.current.getBoundingClientRect().top;
         setDrawing(true);
         setIsCanvasEmpty(false);
-        recordPoint(e.clientX, e.clientY);
+        recordPoint(mouseX, mouseY, false);
     };
 
     const handleMouseMove = (e) => {
-        if (drawing) {
-            recordPoint(e.clientX, e.clientY);
-        }
+        if (!drawing) return;
+        const mouseX = e.clientX - canvasRef.current.getBoundingClientRect().left;
+        const mouseY = e.clientY - canvasRef.current.getBoundingClientRect().top;
+        recordPoint(mouseX, mouseY, true);
     };
 
     const handleMouseUp = () => {
@@ -69,15 +100,18 @@ const DigitRecognizer = () => {
     };
 
     const handleTouchStart = (e) => {
+        const mouseX = e.touches[0].clientX - canvasRef.current.getBoundingClientRect().left;
+        const mouseY = e.touches[0].clientY - canvasRef.current.getBoundingClientRect().top;
         setDrawing(true);
         setIsCanvasEmpty(false);
-        recordPoint(e.touches[0].clientX, e.touches[0].clientY);
+        recordPoint(mouseX, mouseY, false);
     };
 
     const handleTouchMove = (e) => {
-        if (drawing) {
-            recordPoint(e.touches[0].clientX, e.touches[0].clientY);
-        }
+        if (!drawing) return;
+        const mouseX = e.touches[0].clientX - canvasRef.current.getBoundingClientRect().left;
+        const mouseY = e.touches[0].clientY - canvasRef.current.getBoundingClientRect().top;
+        recordPoint(mouseX, mouseY, true);
     };
 
     const handleTouchEnd = () => {
@@ -88,53 +122,23 @@ const DigitRecognizer = () => {
         setDrawing(false);
     };
 
-    const recordPoint = (x, y) => {
-        const virtualCanvas = virtualCanvasRef.current;
-        const context = virtualCanvas.getContext('2d');
-        context.strokeStyle = "white";
-        context.lineJoin = "round";
-        context.lineWidth = 15;
-
-        context.beginPath();
-        context.moveTo(x - virtualCanvas.getBoundingClientRect().left, y - virtualCanvas.getBoundingClientRect().top);
-        context.lineTo(x - virtualCanvas.getBoundingClientRect().left, y - virtualCanvas.getBoundingClientRect().top);
-        context.closePath();
-        context.stroke();
-    };
-
     const clearCanvas = () => {
-        const context = virtualCanvasRef.current.getContext('2d');
-        context.clearRect(0, 0, canvasWidth, canvasHeight);
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         setPrediction(null);
+        clickX.current = [];
+        clickY.current = [];
+        clickDrag.current = [];
         setIsCanvasEmpty(true);
     };
-
-    const copyVirtualCanvasToVisibleCanvas = () => {
-        const virtualCanvas = virtualCanvasRef.current;
-        const visibleCanvas = visibleCanvasRef.current;
-        const context = visibleCanvas.getContext('2d');
-        context.drawImage(virtualCanvas, 0, 0);
-    };
-
-    useEffect(() => {
-        if (!drawing) {
-            copyVirtualCanvasToVisibleCanvas();
-        }
-    }, [drawing]);
 
     return (
         <div className="app-container">
             <h2 className="app-title">Распознавание рукописных цифр</h2>
             <div className="canvas-container">
                 <canvas
-                    ref={virtualCanvasRef}
-                    width={canvasWidth}
-                    height={canvasHeight}
-                    className="canvas"
-                    style={{ display: 'none' }}
-                />
-                <canvas
-                    ref={visibleCanvasRef}
+                    ref={canvasRef}
                     width={canvasWidth}
                     height={canvasHeight}
                     className="canvas"
@@ -149,12 +153,8 @@ const DigitRecognizer = () => {
                 />
             </div>
             <div className="button-container">
-                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas}
-                        disabled={isCanvasEmpty}>Очистить
-                </button>
-                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit}
-                        disabled={isCanvasEmpty}>Распознать
-                </button>
+                <button className={`btn btn-clear ${isCanvasEmpty ? 'disabled' : ''}`} onClick={clearCanvas} disabled={isCanvasEmpty}>Очистить</button>
+                <button className={`btn btn-predict ${isCanvasEmpty ? 'disabled' : ''}`} onClick={predictDigit} disabled={isCanvasEmpty}>Распознать</button>
             </div>
             {prediction !== null && <p className="prediction">Предсказанная цифра: {prediction}</p>}
         </div>
