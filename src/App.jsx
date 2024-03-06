@@ -1,7 +1,6 @@
 import React, {useState, useEffect, useRef} from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
-import debounce from 'lodash/debounce';
 
 const DigitRecognizer = () => {
     const [model, setModel] = useState(null);
@@ -42,6 +41,18 @@ const DigitRecognizer = () => {
         return tensor.div(255.0);
     };
 
+    const debounce = (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                timeout = null;
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    };
+
     const predictDigit = async () => {
         if (!model) {
             console.error('Model not loaded');
@@ -66,11 +77,7 @@ const DigitRecognizer = () => {
         setInputType(e.type.startsWith('touch') ? 'touch' : 'mouse');
     };
 
-    const debouncedHandleMove = useRef(
-        debounce((e) => handleMove(e), 15)
-    ).current;
-
-    const handleMove = (e) => {
+    const handleMove = debounce((e) => {
         if (!drawingRef.current || e.type.startsWith('touch') && inputType !== 'touch' || e.type.startsWith('mouse') && inputType !== 'mouse') return;
         const mouseX = e.clientX || e.touches[0].clientX;
         const mouseY = e.clientY || e.touches[0].clientY;
@@ -78,7 +85,7 @@ const DigitRecognizer = () => {
         clickYRef.current.push(mouseY - canvasRef.current.getBoundingClientRect().top);
         clickDragRef.current.push(true);
         redraw();
-    };
+    }, 10);
 
     const handleEnd = () => {
         drawingRef.current = false;
@@ -125,11 +132,11 @@ const DigitRecognizer = () => {
                     height={350}
                     className="canvas"
                     onMouseDown={handleStart}
-                    onMouseMove={debouncedHandleMove}
+                    onMouseMove={handleMove}
                     onMouseUp={handleEnd}
                     onMouseLeave={handleEnd}
                     onTouchStart={handleStart}
-                    onTouchMove={debouncedHandleMove}
+                    onTouchMove={handleMove}
                     onTouchEnd={handleEnd}
                     onTouchCancel={handleEnd}
                 />
